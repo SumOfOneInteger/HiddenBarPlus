@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build and test (macOS)
+    runs-on: macos-26
+    timeout-minutes: 40
+    env:
+      PROJECT: Hidden Bar Plus.xcodeproj
+      SCHEME: Hidden Bar Plus
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: Resolve Swift packages
+        run: xcodebuild -project "$PROJECT" -scheme "$SCHEME" -resolvePackageDependencies
+
+      - name: Build (Debug, unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
+            -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build \
+            | tee build.log | grep -E 'error:|warning:|BUILD (SUCCEEDED|FAILED)' || true
+          grep -q 'BUILD SUCCEEDED' build.log
+
+      - name: Test (HiddenBarTests + HiddenTests)
+        run: |
+          set -o pipefail
+          xcodebuild -project "$PROJECT" -scheme "$SCHEME" \
+            -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO \
+            -resultBundlePath TestResults.xcresult test \
+            | tee test.log | grep -E 'Test Case .* (passed|failed)|Test Suite .* (passed|failed)|error:|Executed|TEST (SUCCEEDED|FAILED)' || true
+          grep -q 'TEST SUCCEEDED' test.log
+
+      - name: Upload logs and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-logs
+          path: |
+            build.log
+            test.log
+            TestResults.xcresult
+          if-no-files-found: ignore

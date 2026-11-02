@@ -30,7 +30,21 @@ final class AppUpdater: NSObject {
         super.init()
     }
 
+    /// Starts the updater. Skipped when the app runs as a unit-test host, and
+    /// when Sparkle is not configured yet (no `SUPublicEDKey` in Info.plist):
+    /// in both cases Sparkle would otherwise report a configuration error on
+    /// every launch of a development build. "Check for Updates..." stays
+    /// disabled until the updater has started.
     func start() {
+        let environment = ProcessInfo.processInfo.environment
+        if environment["XCTestConfigurationFilePath"] != nil || environment["XCTestSessionIdentifier"] != nil {
+            return
+        }
+        guard let publicKey = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String,
+              !publicKey.isEmpty else {
+            NSLog("AppUpdater: SUPublicEDKey is missing from Info.plist; updates stay disabled until it is set (see docs/RUNBOOK.md).")
+            return
+        }
         controller.startUpdater()
     }
 

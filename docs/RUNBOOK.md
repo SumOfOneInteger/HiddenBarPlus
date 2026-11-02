@@ -20,6 +20,9 @@ xcodebuild -project 'Hidden Bar Plus.xcodeproj' -scheme 'Hidden Bar Plus' \
   -configuration Debug DEVELOPMENT_TEAM=XXXXXXXXXX -allowProvisioningUpdates build
 ```
 
+The CI workflow in `.github/workflows/ci.yml` runs exactly these two commands
+on a GitHub-hosted macOS runner for every push and pull request.
+
 There are two configurations, `Debug` and `Release`, and both compile the
 macOS 27 native hiding engine (`HIDDENBAR_NATIVE_VISIBILITY` is always set).
 Both must exit 0 with **no** `MACOSX_DEPLOYMENT_TARGET` override; the floor is

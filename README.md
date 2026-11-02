@@ -85,6 +85,8 @@ xcodebuild -project 'Hidden Bar Plus.xcodeproj' -scheme 'Hidden Bar Plus' \
 
 To run it from Xcode, open the project, select the *Hidden Bar Plus* target and
 pick your team under *Signing & Capabilities*; the project ships with no team set.
+The same build and test commands run on every push in
+[GitHub Actions](.github/workflows/ci.yml) on a macOS runner.
 
 ## Credits
 

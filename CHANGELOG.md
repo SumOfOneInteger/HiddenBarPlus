@@ -21,6 +21,8 @@ entries below this one are upstream's history and keep upstream's issue numbers.
   standard automatic-check prompt. The appcast URL in `Info.plist` is a placeholder
   until update hosting exists, and `SUPublicEDKey` must be added before the first release.
 - Placeholder app icon, regenerable with `swift scripts/make-placeholder-icon.swift .`.
+- GitHub Actions workflow that builds the app and runs both test bundles on a
+  macOS runner for every push and pull request.
 
 ## v1.11.1 (2026-09-18)
 
