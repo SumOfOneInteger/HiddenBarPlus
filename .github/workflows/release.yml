@@ -1,0 +1,337 @@
+# Release pipeline: archive, Developer ID sign, notarize, staple, generate the
+# Sparkle appcast, publish the GitHub release, the appcast (gh-pages) and the
+# Homebrew cask.
+#
+# Triggers
+#   - push of a tag v<MARKETING_VERSION>   -> full publish
+#   - workflow_dispatch                    -> dry run by default (everything up to
+#                                             publishing; artifacts uploaded), or
+#                                             publish=true to release from main
+#
+# Required repository secrets (Settings > Secrets and variables > Actions)
+#   APPLE_TEAM_ID                         10-character team id
+#   DEVELOPER_ID_APPLICATION_P12_BASE64   base64 of the exported "Developer ID Application" .p12
+#   DEVELOPER_ID_APPLICATION_P12_PASSWORD password chosen when exporting the .p12
+#   APPLE_ID                              Apple ID email used for notarization
+#   APPLE_APP_SPECIFIC_PASSWORD           app-specific password for that Apple ID
+#   SPARKLE_PRIVATE_KEY                   contents of the file written by `generate_keys -x`
+# Optional
+#   HOMEBREW_TAP_TOKEN                    PAT with write access to <owner>/homebrew-tap
+#
+# See docs/RUNBOOK.md for the one-time setup.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the GitHub release, appcast and cask (off = dry run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  PROJECT: Hidden Bar Plus.xcodeproj
+  SCHEME: Hidden Bar Plus
+  APP_NAME: Hidden Bar Plus
+  ARCHIVE_BASENAME: HiddenBarPlus
+  DERIVED_DATA: build/DerivedData
+
+jobs:
+  release:
+    name: Sign, notarize and publish
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version and mode
+        id: meta
+        run: |
+          project_version=$(sed -nE 's/^[[:space:]]*MARKETING_VERSION = ([^;]+);/\1/p' "$PROJECT/project.pbxproj" | sort -u)
+          build_number=$(sed -nE 's/^[[:space:]]*CURRENT_PROJECT_VERSION = ([^;]+);/\1/p' "$PROJECT/project.pbxproj" | sort -u)
+          if [ "$(printf '%s\n' "$project_version" | wc -l | tr -d ' ')" != "1" ] || [ -z "$project_version" ]; then
+            echo "::error::MARKETING_VERSION is missing or differs between configurations: $project_version"; exit 1
+          fi
+          if [ "$(printf '%s\n' "$build_number" | wc -l | tr -d ' ')" != "1" ] || [ -z "$build_number" ]; then
+            echo "::error::CURRENT_PROJECT_VERSION is missing or differs between configurations: $build_number"; exit 1
+          fi
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            tag_version="${GITHUB_REF_NAME#v}"
+            if [ "$tag_version" != "$project_version" ]; then
+              echo "::error::tag $GITHUB_REF_NAME does not match MARKETING_VERSION $project_version"; exit 1
+            fi
+            publish=true
+          else
+            publish="${{ inputs.publish }}"
+          fi
+          {
+            echo "version=$project_version"
+            echo "build=$build_number"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "VERSION=$project_version"
+            echo "BUILD=$build_number"
+          } >> "$GITHUB_ENV"
+          echo "Hidden Bar Plus $project_version (build $build_number), publish=$publish"
+          mkdir -p build
+
+      - name: Check required secrets
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          DEVELOPER_ID_APPLICATION_P12_BASE64: ${{ secrets.DEVELOPER_ID_APPLICATION_P12_BASE64 }}
+          DEVELOPER_ID_APPLICATION_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_APPLICATION_P12_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          missing=""
+          for name in APPLE_TEAM_ID DEVELOPER_ID_APPLICATION_P12_BASE64 DEVELOPER_ID_APPLICATION_P12_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD SPARKLE_PRIVATE_KEY; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::missing repository secrets:$missing (see the header of .github/workflows/release.yml)"; exit 1
+          fi
+          echo "all required secrets present"
+
+      - name: Import Developer ID certificate
+        env:
+          P12_BASE64: ${{ secrets.DEVELOPER_ID_APPLICATION_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_APPLICATION_P12_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(uuidgen)"
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/developer-id.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" login.keychain-db
+          rm -f "$RUNNER_TEMP/developer-id.p12"
+          echo "KEYCHAIN_PATH=$keychain" >> "$GITHUB_ENV"
+          identity=$(security find-identity -v -p codesigning "$keychain" | sed -nE 's/.*"(Developer ID Application: [^"]+)".*/\1/p' | head -1)
+          if [ -z "$identity" ]; then
+            security find-identity -v -p codesigning "$keychain" || true
+            echo "::error::no 'Developer ID Application' identity in the imported certificate"; exit 1
+          fi
+          echo "SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
+          echo "signing as: $identity"
+
+      - name: Archive (Release, universal)
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
+            -destination 'generic/platform=macOS' -derivedDataPath "$DERIVED_DATA" \
+            -archivePath "build/$ARCHIVE_BASENAME.xcarchive" \
+            CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" OTHER_CODE_SIGN_FLAGS="--timestamp" \
+            archive | tee build/archive.log | grep -E 'error:|warning:|ARCHIVE (SUCCEEDED|FAILED)' || true
+          grep -q 'ARCHIVE SUCCEEDED' build/archive.log
+
+      - name: Export Developer ID app
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > build/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>developer-id</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Developer ID Application</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>destination</key><string>export</string>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "build/$ARCHIVE_BASENAME.xcarchive" \
+            -exportOptionsPlist build/ExportOptions.plist -exportPath build/export
+          test -d "build/export/$APP_NAME.app"
+
+      - name: Verify signature and entitlements
+        run: |
+          app="build/export/$APP_NAME.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign --verify --deep --strict "$app/Contents/Frameworks/Sparkle.framework"
+          codesign -d --entitlements - "$app" > build/entitlements.txt 2>&1 || true
+          if grep -q 'app-sandbox' build/entitlements.txt; then
+            echo "::error::the exported app carries the App Sandbox entitlement"; exit 1
+          fi
+          codesign -d -vv "$app" 2>&1 | grep -E 'Authority=|flags=' || true
+          if ! codesign -d -vv "$app" 2>&1 | grep -q 'flags=.*runtime'; then
+            echo "::error::hardened runtime flag missing"; exit 1
+          fi
+          lipo -archs "$app/Contents/MacOS/$APP_NAME"
+
+      - name: Notarize and staple
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          app="build/export/$APP_NAME.app"
+          ditto -c -k --keepParent "$app" build/notarize.zip
+          xcrun notarytool submit build/notarize.zip \
+            --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" \
+            --wait --timeout 45m --output-format json > build/notarize.json || true
+          cat build/notarize.json
+          status=$(jq -r '.status // empty' build/notarize.json)
+          submission=$(jq -r '.id // empty' build/notarize.json)
+          if [ "$status" != "Accepted" ]; then
+            if [ -n "$submission" ]; then
+              xcrun notarytool log "$submission" \
+                --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" \
+                build/notarize-log.json || true
+              cat build/notarize-log.json || true
+            fi
+            echo "::error::notarization did not succeed (status: ${status:-unknown})"; exit 1
+          fi
+          xcrun stapler staple "$app"
+          xcrun stapler validate "$app"
+          spctl -a -vv --type exec "$app"
+          mkdir -p build/release
+          ditto -c -k --keepParent "$app" "build/release/$ARCHIVE_BASENAME-$VERSION.zip"
+          shasum -a 256 "build/release/$ARCHIVE_BASENAME-$VERSION.zip"
+
+      - name: Release notes from CHANGELOG
+        run: |
+          mkdir -p build/notes
+          python3 scripts/release-notes.py "$VERSION" > "build/notes/$ARCHIVE_BASENAME-$VERSION.md"
+          python3 scripts/release-notes.py "$VERSION" --html > "build/notes/$ARCHIVE_BASENAME-$VERSION.html"
+          cat "build/notes/$ARCHIVE_BASENAME-$VERSION.md"
+
+      - name: Fetch the published appcast (gh-pages)
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: pages
+
+      - name: Generate the Sparkle appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          python3 - "$BUILD" pages/appcast.xml <<'EOF'
+          import pathlib, re, sys
+          build, path = int(sys.argv[1]), pathlib.Path(sys.argv[2])
+          if path.exists():
+              published = [int(v) for v in re.findall(r'sparkle:version(?:>|=")(\d+)', path.read_text())]
+              if published and build <= max(published):
+                  sys.exit(f"CURRENT_PROJECT_VERSION {build} must be greater than the last published build {max(published)}")
+          print(f"build number {build} is newer than everything in the appcast")
+          EOF
+          sparkle_bin=$(find "$DERIVED_DATA/SourcePackages/artifacts" -type d -path '*/Sparkle/bin' | head -1)
+          if [ -z "$sparkle_bin" ]; then
+            echo "::error::Sparkle command line tools not found under $DERIVED_DATA"; exit 1
+          fi
+          mkdir -p build/appcast
+          cp "build/release/$ARCHIVE_BASENAME-$VERSION.zip" build/appcast/
+          cp "build/notes/$ARCHIVE_BASENAME-$VERSION.html" build/appcast/
+          if [ -f pages/appcast.xml ]; then cp pages/appcast.xml build/appcast/appcast.xml; fi
+          "$sparkle_bin/generate_appcast" -s "$SPARKLE_PRIVATE_KEY" \
+            --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/v$VERSION/" \
+            --link "https://github.com/$GITHUB_REPOSITORY/releases" \
+            --embed-release-notes \
+            build/appcast
+          grep -q "$ARCHIVE_BASENAME-$VERSION.zip" build/appcast/appcast.xml
+          echo "--- appcast.xml ---"
+          cat build/appcast/appcast.xml
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.meta.outputs.version || 'unknown' }}
+          if-no-files-found: ignore
+          path: |
+            build/release/*.zip
+            build/appcast/appcast.xml
+            build/notes/
+            build/*.log
+            build/notarize*.json
+            build/entitlements.txt
+            build/${{ env.ARCHIVE_BASENAME }}.xcarchive/dSYMs/
+
+      - name: Publish GitHub release
+        if: steps.meta.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip="build/release/$ARCHIVE_BASENAME-$VERSION.zip"
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            gh release upload "v$VERSION" "$zip" --clobber
+          else
+            gh release create "v$VERSION" "$zip" --target "$GITHUB_SHA" \
+              --title "Hidden Bar Plus $VERSION" \
+              --notes-file "build/notes/$ARCHIVE_BASENAME-$VERSION.md"
+          fi
+          gh release view "v$VERSION" --json url --jq .url
+
+      - name: Publish the appcast to GitHub Pages
+        if: steps.meta.outputs.publish == 'true'
+        run: |
+          cp build/appcast/appcast.xml pages/appcast.xml
+          cd pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          if git commit -m "appcast: Hidden Bar Plus $VERSION"; then
+            git push origin HEAD:gh-pages
+          else
+            echo "appcast unchanged"
+          fi
+
+      - name: Update the cask on main and in the tap
+        if: steps.meta.outputs.publish == 'true'
+        continue-on-error: true
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          scripts/update-cask.sh "$VERSION" "build/release/$ARCHIVE_BASENAME-$VERSION.zip"
+          cp Casks/hidden-bar-plus.rb build/hidden-bar-plus.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -- Casks/hidden-bar-plus.rb
+          git fetch -q origin main
+          git checkout -q -B main origin/main
+          cp build/hidden-bar-plus.rb Casks/hidden-bar-plus.rb
+          git add Casks/hidden-bar-plus.rb
+          if git commit -m "cask: Hidden Bar Plus $VERSION"; then
+            git push origin main || echo "::warning::could not push the cask update to main; run scripts/update-cask.sh $VERSION locally"
+          else
+            echo "cask on main already up to date"
+          fi
+          if [ -n "$HOMEBREW_TAP_TOKEN" ]; then
+            git clone -q "https://x-access-token:$HOMEBREW_TAP_TOKEN@github.com/$GITHUB_REPOSITORY_OWNER/homebrew-tap.git" build/tap
+            mkdir -p build/tap/Casks
+            cp build/hidden-bar-plus.rb build/tap/Casks/hidden-bar-plus.rb
+            [ -f build/tap/README.md ] || cp homebrew-tap/README.md build/tap/README.md
+            git -C build/tap add Casks/hidden-bar-plus.rb README.md
+            if git -C build/tap -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "hidden-bar-plus $VERSION"; then
+              git -C build/tap push
+            else
+              echo "tap already up to date"
+            fi
+          else
+            echo "::notice::HOMEBREW_TAP_TOKEN not set; publish the cask with scripts/publish-tap.sh"
+          fi
+
+      - name: Remove the signing keychain
+        if: always()
+        run: |
+          if [ -n "${KEYCHAIN_PATH:-}" ] && [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH"
+          fi

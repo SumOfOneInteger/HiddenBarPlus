@@ -25,6 +25,14 @@ entries below this one are upstream's history and keep upstream's issue numbers.
   macOS runner for every push and pull request.
 - Homebrew cask definition (`Casks/hidden-bar-plus.rb`) and
   `scripts/update-cask.sh` to point it at a release.
+- Release workflow (`.github/workflows/release.yml`): universal archive,
+  Developer ID signing, notarization and stapling, Sparkle appcast, GitHub
+  release, appcast publish to GitHub Pages and cask update, driven by
+  repository secrets. `scripts/release-notes.py` turns the CHANGELOG section
+  into the release notes.
+- `gh-pages` branch with the Sparkle appcast (empty until the first release)
+  and an index page at the feed's address.
+- Homebrew tap layout: `homebrew-tap/README.md` and `scripts/publish-tap.sh`.
 
 ## v1.11.1 (2026-09-18)
 

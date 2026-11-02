@@ -65,100 +65,120 @@ the installed app, test the dev build, then re-import and relaunch.
 
 ## Release
 
+Releases are built by the **Release** GitHub Actions workflow
+(`.github/workflows/release.yml`) on a macOS runner: universal archive,
+Developer ID signing, notarization, stapling, Sparkle appcast, GitHub release,
+appcast publish to GitHub Pages, Homebrew cask. Until the one-time setup below
+is complete the workflow stops at its first step with the list of missing
+secrets.
+
 ### One-time setup
 
-1. **Apple Developer Program** membership. Create a *Developer ID Application*
-   certificate (Xcode > Settings > Accounts > Manage Certificates) and store
-   notarization credentials once:
-   `xcrun notarytool store-credentials notary --apple-id you@example.com --team-id XXXXXXXXXX`
-   (uses an app-specific password from appleid.apple.com).
-2. **Sparkle signing keys.** The tools ship inside the resolved package:
+1. **Apple Developer Program** membership. In Xcode > Settings > Accounts >
+   Manage Certificates create a *Developer ID Application* certificate. Export
+   it from Keychain Access as a `.p12` with a password, then
+   `base64 -i DeveloperID.p12 | pbcopy`.
+2. **App-specific password** for notarization: appleid.apple.com > Sign-In and
+   Security > App-Specific Passwords.
+3. **Sparkle keys.** The tools ship inside the resolved package:
 
    ```sh
    SPARKLE_BIN=$(find ~/Library/Developer/Xcode/DerivedData -type d \
      -path '*artifacts/sparkle/Sparkle/bin' | head -1)
-   "$SPARKLE_BIN/generate_keys"
+   "$SPARKLE_BIN/generate_keys"                          # prints the public key
+   "$SPARKLE_BIN/generate_keys" -x sparkle_private.key   # exports the private key
    ```
 
-   It prints the public key and stores the private key in your login keychain.
    Put the public key in `hidden/Info.plist` as `SUPublicEDKey` (replace the
-   comment there). Export a backup with `generate_keys -x sparkle_private.key`
-   and keep it somewhere safe: losing the private key strands every installed
-   copy, because they will refuse updates signed with a new key.
-3. **Appcast hosting.** `SUFeedURL` in `Info.plist` is
-   `https://sumofoneinteger.github.io/HiddenBarPlus/appcast.xml`. Enable GitHub
-   Pages for this repository (a `gh-pages` branch or `docs/` folder) and publish
-   `appcast.xml` there, or change the URL before the first release. It must
-   stay HTTPS and must never move once users have the app.
-4. Fill in `teamID` in `scripts/ExportOptions.plist`.
+   comment there) and commit. Keep `sparkle_private.key` somewhere safe and out
+   of the repo: losing it strands every installed copy, because they refuse
+   updates signed with a different key.
+4. **Repository secrets** (Settings > Secrets and variables > Actions):
+
+   | Secret | Value |
+   |---|---|
+   | `APPLE_TEAM_ID` | 10-character team id |
+   | `DEVELOPER_ID_APPLICATION_P12_BASE64` | the base64 from step 1 |
+   | `DEVELOPER_ID_APPLICATION_P12_PASSWORD` | the `.p12` password |
+   | `APPLE_ID` | your Apple ID email |
+   | `APPLE_APP_SPECIFIC_PASSWORD` | from step 2 |
+   | `SPARKLE_PRIVATE_KEY` | contents of `sparkle_private.key` |
+   | `HOMEBREW_TAP_TOKEN` (optional) | fine-grained PAT with *Contents: write* on `homebrew-tap` |
+
+5. **GitHub Pages.** The `gh-pages` branch holds `appcast.xml` (an empty feed
+   until the first release) and an index page. In Settings > Pages set Source to
+   *Deploy from a branch*, branch `gh-pages`, folder `/ (root)`. A minute later
+   `SUFeedURL` (`https://sumofoneinteger.github.io/HiddenBarPlus/appcast.xml`)
+   must return the feed. That URL must never move once users have the app.
+6. **Homebrew tap.** Create an empty repository named `homebrew-tap` under your
+   account. `homebrew-tap/README.md` in this repo is its README; the release
+   workflow (with `HOMEBREW_TAP_TOKEN`) or `scripts/publish-tap.sh` fills it.
+7. **Dry run.** Actions > Release > Run workflow with *publish* off. It signs,
+   notarizes and builds the appcast without publishing anything and uploads the
+   results as a workflow artifact. Fix whatever it reports before tagging.
 
 ### Each release
 
-1. Verify: builds green, tests green, behavioral checks above run, CHANGELOG
-   has the entry.
-2. Bump `MARKETING_VERSION` (what users see, e.g. 1.0.1) and
+1. Bump `MARKETING_VERSION` (what users see, e.g. 1.0.1) and
    `CURRENT_PROJECT_VERSION` (an integer that must increase every release;
-   Sparkle compares it) in the project file, in both configurations.
-3. Archive and export a Developer ID build:
+   Sparkle compares it, and the workflow refuses a build number that is not
+   newer than the published appcast) in the project file, both configurations.
+2. Give the CHANGELOG entry a heading that contains the version, e.g.
+   `## 1.0.1 (2026-12-01)`. The workflow turns that section into the release
+   notes and refuses to run without it.
+3. Commit, tag, push:
 
    ```sh
-   xcodebuild -project 'Hidden Bar Plus.xcodeproj' -scheme 'Hidden Bar Plus' \
-     -configuration Release -archivePath build/HiddenBarPlus.xcarchive \
-     -allowProvisioningUpdates archive
-   xcodebuild -exportArchive -archivePath build/HiddenBarPlus.xcarchive \
-     -exportOptionsPlist scripts/ExportOptions.plist -exportPath build/export
+   git tag v1.0.1 && git push origin main v1.0.1
    ```
 
-   (Or Product > Archive in Xcode, then *Distribute App > Direct Distribution*,
-   which also notarizes.)
-4. Notarize and staple:
-
-   ```sh
-   cd build/export
-   ditto -c -k --keepParent 'Hidden Bar Plus.app' HiddenBarPlus-1.0.0.zip
-   xcrun notarytool submit HiddenBarPlus-1.0.0.zip --keychain-profile notary --wait
-   xcrun stapler staple 'Hidden Bar Plus.app'
-   rm HiddenBarPlus-1.0.0.zip
-   ditto -c -k --keepParent 'Hidden Bar Plus.app' HiddenBarPlus-1.0.0.zip   # stapled copy
-   ```
-
-5. Confirm the shipped app is unsandboxed and hardened:
-
-   ```sh
-   codesign -d --entitlements - -vv 'Hidden Bar Plus.app' 2>&1 | grep -E 'app-sandbox|runtime'
-   # must print the runtime flag and nothing about app-sandbox
-   spctl -a -vv 'Hidden Bar Plus.app'   # "accepted ... source=Notarized Developer ID"
-   ```
-
-6. Appcast: keep a local folder with the zips of every release and run
-
-   ```sh
-   "$SPARKLE_BIN/generate_appcast" \
-     --download-url-prefix https://github.com/SumOfOneInteger/HiddenBarPlus/releases/download/v1.0.0/ \
-     path/to/release-zips
-   ```
-
-   It signs the new zip with your EdDSA key and writes `appcast.xml` next to
-   the zips. Publish that `appcast.xml` at `SUFeedURL`.
-7. Create the GitHub release `v1.0.0`, attach the stapled zip under exactly the
-   name the appcast references, paste the CHANGELOG entry.
-8. Homebrew: point the cask at the release and test it locally:
-
-   ```sh
-   scripts/update-cask.sh 1.0.0      # sets version + sha256 in Casks/hidden-bar-plus.rb
-   brew install --cask ./Casks/hidden-bar-plus.rb
-   brew uninstall --cask hidden-bar-plus
-   ```
-
-   Commit the updated cask. To publish it, create a repository named
-   `homebrew-tap` under your account and copy the file to `Casks/` there; users
-   then run `brew install --cask sumofoneinteger/tap/hidden-bar-plus`. Once the
-   project meets homebrew-cask's acceptance criteria (an established repository
-   with a notarized release and enough stars and forks; see their CONTRIBUTING),
-   fork homebrew/homebrew-cask, add the same file under `Casks/h/`, run
+   The workflow checks that the tag matches `MARKETING_VERSION`, publishes the
+   GitHub release `v1.0.1` with `HiddenBarPlus-1.0.1.zip`, updates
+   `appcast.xml` on `gh-pages`, commits the updated cask to `main` and, with
+   `HOMEBREW_TAP_TOKEN`, to the tap. Installed copies see the update on their
+   next check.
+4. If the tap step was skipped: `git pull`, then `scripts/publish-tap.sh`.
+5. homebrew-cask: once the project meets their acceptance criteria (an
+   established repository with a notarized release and enough stars and forks;
+   see their CONTRIBUTING), fork homebrew/homebrew-cask, add
+   `Casks/hidden-bar-plus.rb` under `Casks/h/`, run
    `brew audit --cask --new --online hidden-bar-plus` and `brew style --fix`,
-   and open the PR there. Later releases only need `scripts/update-cask.sh`
-   again.
+   and open the PR there.
+
+### Manual release (fallback)
+
+The workflow is a script of these steps; run them by hand if Actions is
+unavailable. Fill `teamID` in `scripts/ExportOptions.plist` first, and store
+notarization credentials once with
+`xcrun notarytool store-credentials notary --apple-id you@example.com --team-id XXXXXXXXXX`.
+
+```sh
+xcodebuild -project 'Hidden Bar Plus.xcodeproj' -scheme 'Hidden Bar Plus' \
+  -configuration Release -archivePath build/HiddenBarPlus.xcarchive \
+  -allowProvisioningUpdates archive
+xcodebuild -exportArchive -archivePath build/HiddenBarPlus.xcarchive \
+  -exportOptionsPlist scripts/ExportOptions.plist -exportPath build/export
+cd build/export
+ditto -c -k --keepParent 'Hidden Bar Plus.app' HiddenBarPlus-1.0.0.zip
+xcrun notarytool submit HiddenBarPlus-1.0.0.zip --keychain-profile notary --wait
+xcrun stapler staple 'Hidden Bar Plus.app'
+rm HiddenBarPlus-1.0.0.zip && ditto -c -k --keepParent 'Hidden Bar Plus.app' HiddenBarPlus-1.0.0.zip
+codesign -d --entitlements - -vv 'Hidden Bar Plus.app' 2>&1 | grep -E 'app-sandbox|runtime'  # runtime yes, sandbox no
+spctl -a -vv 'Hidden Bar Plus.app'                                                            # Notarized Developer ID
+```
+
+Then, in a folder holding that zip and the current `appcast.xml` from
+`gh-pages`:
+
+```sh
+"$SPARKLE_BIN/generate_appcast" \
+  --download-url-prefix https://github.com/SumOfOneInteger/HiddenBarPlus/releases/download/v1.0.0/ \
+  --link https://github.com/SumOfOneInteger/HiddenBarPlus/releases .
+```
+
+Create the GitHub release `v1.0.0` with the zip attached under exactly that
+name, commit the new `appcast.xml` to `gh-pages`, then
+`scripts/update-cask.sh 1.0.0 && scripts/publish-tap.sh`.
 
 ## Tracking upstream
 
