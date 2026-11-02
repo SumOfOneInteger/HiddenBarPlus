@@ -23,6 +23,8 @@ entries below this one are upstream's history and keep upstream's issue numbers.
 - Placeholder app icon, regenerable with `swift scripts/make-placeholder-icon.swift .`.
 - GitHub Actions workflow that builds the app and runs both test bundles on a
   macOS runner for every push and pull request.
+- Homebrew cask definition (`Casks/hidden-bar-plus.rb`) and
+  `scripts/update-cask.sh` to point it at a release.
 
 ## v1.11.1 (2026-09-18)
 
