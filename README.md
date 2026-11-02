@@ -47,8 +47,9 @@ Bar; the native engine takes over on macOS 27.
 3. On macOS 27, grant Accessibility when asked
    (System Settings › Privacy & Security › Accessibility).
 
-A Homebrew cask (`brew install --cask hidden-bar-plus`) is planned; until it is
-published, use the manual download.
+Homebrew: the cask definition lives in [`Casks/hidden-bar-plus.rb`](Casks/hidden-bar-plus.rb)
+and goes live with the first notarized release (in a tap first, then in
+homebrew-cask); until then, use the manual download.
 
 ## Usage
 

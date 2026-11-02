@@ -142,10 +142,23 @@ the installed app, test the dev build, then re-import and relaunch.
    the zips. Publish that `appcast.xml` at `SUFeedURL`.
 7. Create the GitHub release `v1.0.0`, attach the stapled zip under exactly the
    name the appcast references, paste the CHANGELOG entry.
-8. Homebrew: after the first notarized release, submit a cask named
-   `hidden-bar-plus` to homebrew-cask (`brew create --cask <zip url>` scaffolds
-   it; `brew audit --cask --new hidden-bar-plus` before the PR), or publish it
-   in your own tap. Later releases only need the version and sha256 bumped.
+8. Homebrew: point the cask at the release and test it locally:
+
+   ```sh
+   scripts/update-cask.sh 1.0.0      # sets version + sha256 in Casks/hidden-bar-plus.rb
+   brew install --cask ./Casks/hidden-bar-plus.rb
+   brew uninstall --cask hidden-bar-plus
+   ```
+
+   Commit the updated cask. To publish it, create a repository named
+   `homebrew-tap` under your account and copy the file to `Casks/` there; users
+   then run `brew install --cask sumofoneinteger/tap/hidden-bar-plus`. Once the
+   project meets homebrew-cask's acceptance criteria (an established repository
+   with a notarized release and enough stars and forks; see their CONTRIBUTING),
+   fork homebrew/homebrew-cask, add the same file under `Casks/h/`, run
+   `brew audit --cask --new --online hidden-bar-plus` and `brew style --fix`,
+   and open the PR there. Later releases only need `scripts/update-cask.sh`
+   again.
 
 ## Tracking upstream
 
