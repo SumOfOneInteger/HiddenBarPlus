@@ -1,5 +1,9 @@
 # Backlog
 
+> Inherited from upstream [dwarvesf/hidden](https://github.com/dwarvesf/hidden) at v1.11.1.
+> Issue and PR numbers refer to the upstream tracker. App Store items no
+> longer apply to Hidden Bar Plus, which only ships the direct build.
+
 Durable, committed index of open work. The detailed planning layer
 (`_meta/megagoals/issue-list-clearing/` and `.claude/`) is local-only and gitignored,
 so this file is the version that survives a machine switch and a fresh clone. Keep it

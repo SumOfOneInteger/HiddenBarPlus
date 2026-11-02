@@ -30,12 +30,13 @@ class AppDelegate: NSObject, NSApplicationDelegate{
         guard ensureSingleInstance() else { return }
         setupAutoStartApp()
         registerDefaultValues()
+        AppUpdater.shared.start()
         setupHotKey()
         openPreferencesIfNeeded()
         detectLTRLang()
     }
 
-    /// Hidden Bar is a menu bar utility with no visible window, so launching it a
+    /// Hidden Bar Plus is a menu bar utility with no visible window, so launching it a
     /// second time looks like a no-op while silently spawning a duplicate instance.
     /// If another instance with the same bundle ID is already running, activate it
     /// and terminate this one instead.

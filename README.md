@@ -1,86 +1,100 @@
 <p align="center">
-	<img width="200" height="200" margin-right="100%" src="https://github.com/dwarvesf/hidden/blob/develop/img/icon_512%402x.png?raw=true">
+	<img width="200" height="200" src="img/icon_512@2x.png" alt="Hidden Bar Plus icon">
 </p>
 <p align="center">
-	<a href="https://webuild.community">
-		<img src="https://raw.githubusercontent.com/webuild-community/badge/master/svg/love.svg" />
+	<a href="https://github.com/SumOfOneInteger/HiddenBarPlus/releases/latest">
+		<img src="https://img.shields.io/badge/download-latest-brightgreen.svg" alt="download">
 	</a>
-	<a href="https://github.com/dwarvesf/hidden/releases/latest">
- 		<img src="https://img.shields.io/badge/download-latest-brightgreen.svg" alt="download">
-	</a>
-	<a href="https://img.shields.io/badge/platform-macOS-lightgrey.svg">
- 		<img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="platform">
-	</a>
-	<a href="https://img.shields.io/badge/requirements-macOS Ventura+-ff69b4.svg">
- 		<img src="https://img.shields.io/badge/requirements-macOS Ventura+-ff69b4.svg" alt="systemrequirements">
-	</a>
+	<img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="platform">
+	<img src="https://img.shields.io/badge/requirements-macOS%2013%2B-ff69b4.svg" alt="requirements">
 </p>
 
-## Hidden Bar
-Hidden Bar lets you hide menu bar items to give your Mac a cleaner look.
+# Hidden Bar Plus
+
+Hidden Bar Plus hides menu bar items to give your Mac a cleaner look.
+
+It is an independently maintained fork of [Hidden Bar](https://github.com/dwarvesf/hidden)
+by [Dwarves Foundation](https://github.com/dwarvesf), distributed outside the
+Mac App Store so that it keeps working on macOS 27 and later.
 
 <p align="center">
-	<img width="400" src="img/screen1.png">
-	<img width="400" src="img/screen2.png">
+	<img width="400" src="img/screen1.png" alt="collapsed menu bar">
+	<img width="400" src="img/screen2.png" alt="expanded menu bar">
 </p>
 
-## 🚀 Install
+## Why a fork
 
-###  App Store
+- **Works on macOS 27.** macOS 27 ejects the over-wide separator that Hidden Bar
+  used to push icons off-screen. Hidden Bar Plus ships upstream's native hiding
+  engine, which asks macOS itself to hide the icons. That engine needs the
+  Accessibility permission and cannot run inside the App Store sandbox, which is
+  why this app is a direct download only.
+- **Auto-updates.** A built-in [Sparkle](https://sparkle-project.org) updater:
+  *Check for Updates…* in the context menu, plus optional automatic checks.
+- **One build.** No App Store scheme, no sandbox entitlement, nothing to pick.
 
-[![AppStore](img/appstore.svg)](https://itunes.apple.com/app/hidden-bar/id1452453066)
+Hidden Bar Plus has its own bundle identifier (`com.sumofoneinteger.hiddenbarplus`),
+so it installs next to Hidden Bar and starts with fresh preferences.
 
-### Others
+## Install
 
-The Hidden Bar is notarized before distributed out side App Store. It's safe to use 👍
+Requires macOS 13 Ventura or later. On macOS 13 to 26 it behaves like Hidden
+Bar; the native engine takes over on macOS 27.
 
-#### Using Homebrew
+1. Download the latest build from
+   [Releases](https://github.com/SumOfOneInteger/HiddenBarPlus/releases/latest).
+2. Drag **Hidden Bar Plus.app** into `/Applications` and launch it.
+3. On macOS 27, grant Accessibility when asked
+   (System Settings › Privacy & Security › Accessibility).
 
-```
-brew install --cask hiddenbar
-```
+A Homebrew cask (`brew install --cask hidden-bar-plus`) is planned; until it is
+published, use the manual download.
 
-#### Manual download
+## Usage
 
-- [Download latest version](https://github.com/dwarvesf/hidden/releases/latest)
-- Open and drag the app to the Applications folder.
-- Launch Hidden and drag the icon in your menu bar (hold CMD) to the right so it is between some other icons.
-
-## 🕹 Usage
-
-* `⌘` + drag to move the Hidden icons around in the menu bar.
-* Click the Arrow icon to hide menu bar items.
+- `⌘` + drag to move icons around in the menu bar. Icons to the left of the
+  arrow are hidden when the bar is collapsed.
+- Click the arrow to hide or show them. Right-click it for the context menu
+  (Preferences, auto-collapse, Check for Updates…, Quit).
 
 <p align="center">
-	<img src="img/tutorial.gif">
+	<img src="img/tutorial.gif" alt="tutorial">
 </p>
 
-## 📚 Documentation
+## Documentation
 
-- [Manual](docs/MANUAL.md): every setting, the hidden Terminal-only options, and troubleshooting.
+- [Manual](docs/MANUAL.md): every setting, the Terminal-only options, and troubleshooting.
 - [Architecture](docs/ARCHITECTURE.md): how the hiding trick works, topology, and known limits.
-- [Maintainer runbook](docs/RUNBOOK.md): build, behavioral verification, and release process.
+- [Maintainer runbook](docs/RUNBOOK.md): build, verify, sign, notarize and publish a release.
+- [Backlog](docs/BACKLOG.md): open work inherited from upstream.
 
-## ✨<a href="https://github.com/dwarvesf/hidden/graphs/contributors">Contributors</a>
+## Building from source
 
-This project exists thanks to all the people who contribute. Thank you guys so much 👏
+Xcode 26 or later on macOS 13+. Dependencies (HotKey, Sparkle) are Swift
+packages and resolve on first build.
 
-[![](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/images/0)](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/links/0)[![](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/images/1)](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/links/1)[![](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/images/2)](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/links/2)[![](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/images/3)](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/links/3)[![](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/images/4)](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/links/4)[![](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/images/5)](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/links/5)[![](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/images/6)](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/links/6)[![](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/images/7)](https://sourcerer.io/fame/phucledien/dwarvesf/hidden/links/7)
+```sh
+# build without signing
+xcodebuild -project 'Hidden Bar Plus.xcodeproj' -scheme 'Hidden Bar Plus' \
+  -configuration Debug CODE_SIGNING_ALLOWED=NO build
 
-Please read [this](CONTRIBUTING.md) before you make a contribution.
+# unit tests (HiddenBarTests + HiddenTests)
+xcodebuild -project 'Hidden Bar Plus.xcodeproj' -scheme 'Hidden Bar Plus' \
+  -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO test
+```
 
-## Requirements
-macOS version >= 13.0 (Ventura)
+To run it from Xcode, open the project, select the *Hidden Bar Plus* target and
+pick your team under *Signing & Capabilities*; the project ships with no team set.
 
-Running an older macOS? The last release supporting macOS 10.13 High Sierra
-through 12 Monterey is [v1.10](https://github.com/dwarvesf/hidden/releases/tag/v1.10).
-Later versions require macOS 13 because autostart moved to the `SMAppService`
-API introduced there.
+## Credits
 
-## You may also like
-- [Blurred](https://github.com/dwarvesf/Blurred) - A macOS utility that helps reduce distraction by dimming your inactive noise
-- [Micro Sniff](https://github.com/dwarvesf/micro-sniff) - An ultra-light macOS utility that notify whenever your micro-device is being used
-- [VimMotion](https://github.com/dwarvesf/VimMotionPublic) Vim style shortcut for MacOS
+Hidden Bar Plus is based on [Hidden Bar](https://github.com/dwarvesf/hidden),
+© 2019 Dwarves Foundation, including its macOS 27 native hiding engine and its
+translations by the Hidden Bar community. Thank you.
+
+Contributions are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+
 ## License
 
-MIT &copy; [Dwarves Foundation](https://github.com/dwarvesf)
+MIT. Copyright © 2026 SumOfOneInteger; original work copyright © 2019 Dwarves
+Foundation. See [LICENSE](LICENSE).

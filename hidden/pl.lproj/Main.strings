@@ -1,23 +1,23 @@
 /* Class = "NSTextFieldCell"; title = "Settings"; ObjectID = "1Is-Ut-a9h"; */
 "1Is-Ut-a9h.title" = "Ustawienia";
 
-/* Class = "NSMenuItem"; title = "Hidden Bar"; ObjectID = "1Xt-HY-uBw"; */
-"1Xt-HY-uBw.title" = "Hidden Bar";
+/* Class = "NSMenuItem"; title = "Hidden Bar Plus"; ObjectID = "1Xt-HY-uBw"; */
+"1Xt-HY-uBw.title" = "Hidden Bar Plus";
 
 /* Class = "NSTextFieldCell"; title = "⭐️Always Hidden"; ObjectID = "1jU-1x-cFf"; */
 "1jU-1x-cFf.title" = "⭐️Zawsze ukryte";
 
-/* Class = "NSTextFieldCell"; title = "Hidden Bar"; ObjectID = "2xp-Ht-xa6"; */
-"2xp-Ht-xa6.title" = "Hidden Bar";
+/* Class = "NSTextFieldCell"; title = "Hidden Bar Plus"; ObjectID = "2xp-Ht-xa6"; */
+"2xp-Ht-xa6.title" = "Hidden Bar Plus";
 
 /* Class = "NSTextFieldCell"; title = "Version"; ObjectID = "4Au-5A-dYq"; */
 "4Au-5A-dYq.title" = "Wersja";
 
-/* Class = "NSMenuItem"; title = "Quit Hidden Bar"; ObjectID = "4sb-4s-VLi"; */
-"4sb-4s-VLi.title" = "Zakończ Hidden Bar";
+/* Class = "NSMenuItem"; title = "Quit Hidden Bar Plus"; ObjectID = "4sb-4s-VLi"; */
+"4sb-4s-VLi.title" = "Zakończ Hidden Bar Plus";
 
-/* Class = "NSMenuItem"; title = "About Hidden Bar"; ObjectID = "5kV-Vb-QxS"; */
-"5kV-Vb-QxS.title" = "Informacje o Hidden Bar";
+/* Class = "NSMenuItem"; title = "About Hidden Bar Plus"; ObjectID = "5kV-Vb-QxS"; */
+"5kV-Vb-QxS.title" = "Informacje o Hidden Bar Plus";
 
 /* Class = "NSButtonCell"; title = "Use the full MenuBar on expanding"; ObjectID = "8z8-6N-wnc"; */
 "8z8-6N-wnc.title" = "Po rozwinięciu używaj całego paska menu";
@@ -70,29 +70,20 @@
 /* Class = "NSButtonCell"; title = "Enable always hidden section"; ObjectID = "Nhn-ch-1f7"; */
 "Nhn-ch-1f7.title" = "Włącz sekcję \"Zawsze ukryte\"";
 
-/* Class = "NSMenuItem"; title = "Hide Hidden Bar"; ObjectID = "Olw-nP-bQN"; */
-"Olw-nP-bQN.title" = "Ukryj Hidden Bar";
-
-/* Class = "NSTextFieldCell"; title = "Follow us on Twitter"; ObjectID = "Tba-C7-Zr8"; */
-"Tba-C7-Zr8.title" = "Obserwuj nas na Twitterze";
+/* Class = "NSMenuItem"; title = "Hide Hidden Bar Plus"; ObjectID = "Olw-nP-bQN"; */
+"Olw-nP-bQN.title" = "Ukryj Hidden Bar Plus";
 
 /* Class = "NSMenuItem"; title = "Hide Others"; ObjectID = "Vdr-fp-XzO"; */
 "Vdr-fp-XzO.title" = "Ukryj pozostałe";
 
-/* Class = "NSButtonCell"; title = "Start Hidden Bar when I log in"; ObjectID = "W1G-55-zGo"; */
-"W1G-55-zGo.title" = "Uruchamiaj Hidden Bar po zalogowaniu";
+/* Class = "NSButtonCell"; title = "Start Hidden Bar Plus when I log in"; ObjectID = "W1G-55-zGo"; */
+"W1G-55-zGo.title" = "Uruchamiaj Hidden Bar Plus po zalogowaniu";
 
 /* Class = "NSTextFieldCell"; title = "Menu bar cleaner"; ObjectID = "X4W-sr-Z32"; */
 "X4W-sr-Z32.title" = "Porządkowanie paska menu";
 
-/* Class = "NSTextFieldCell"; title = "Know more about us"; ObjectID = "Xb1-xM-sYy"; */
-"Xb1-xM-sYy.title" = "Dowiedz się o nas więcej";
-
 /* Class = "NSMenuItem"; title = "1 minute"; ObjectID = "Zkr-Xd-Ffh"; */
 "Zkr-Xd-Ffh.title" = "1 min";
-
-/* Class = "NSTextFieldCell"; title = "MIT © Dwarves Foundation"; ObjectID = "b1t-QR-iSj"; */
-"b1t-QR-iSj.title" = "MIT © Dwarves Foundation";
 
 /* Class = "NSBox"; title = "Box"; ObjectID = "bFi-aV-ejJ"; */
 "bFi-aV-ejJ.title" = "Pole";
@@ -106,9 +97,6 @@
 /* Class = "NSButtonCell"; title = "Set Shortcut"; ObjectID = "fc2-jD-QNf"; */
 "fc2-jD-QNf.title" = "Ustaw skrót";
 
-/* Class = "NSTextFieldCell"; title = "This app is fully open source"; ObjectID = "fqc-io-QOP"; */
-"fqc-io-QOP.title" = "Ta aplikacja ma w pełni otwarty kod źródłowy";
-
 /* Class = "NSButtonCell"; title = "Show preferences on launch"; ObjectID = "hCh-Ue-NgH"; */
 "hCh-Ue-NgH.title" = "Pokazuj \"Preferencje...\" po uruchomieniu";
 
@@ -118,8 +106,8 @@
 /* Class = "NSTextFieldCell"; title = "Shown"; ObjectID = "iyS-g5-5mk"; */
 "iyS-g5-5mk.title" = "Widoczne";
 
-/* Class = "NSTextFieldCell"; title = "In your Mac's menu bar, hold ⌘ and drag icons\nbetween sections to configure Hidden Bar."; ObjectID = "k7C-e5-6a0"; */
-"k7C-e5-6a0.title" = "Na pasku menu Maca przytrzymaj klawisz ⌘ i przeciągaj ikony\nmiędzy sekcjami, aby skonfigurować Hidden Bar.";
+/* Class = "NSTextFieldCell"; title = "In your Mac's menu bar, hold ⌘ and drag icons\nbetween sections to configure Hidden Bar Plus."; ObjectID = "k7C-e5-6a0"; */
+"k7C-e5-6a0.title" = "Na pasku menu Maca przytrzymaj klawisz ⌘ i przeciągaj ikony\nmiędzy sekcjami, aby skonfigurować Hidden Bar Plus.";
 
 /* Class = "NSButtonCell"; title = "Automatically hide icon after: "; ObjectID = "kg8-rW-srh"; */
 "kg8-rW-srh.title" = "Automatycznie ukrywaj ikony po: ";
@@ -130,11 +118,8 @@
 /* Class = "NSMenuItem"; title = "15 seconds"; ObjectID = "rdn-Xm-fZD"; */
 "rdn-Xm-fZD.title" = "15 s";
 
-/* Class = "NSTextFieldCell"; title = "Email us"; ObjectID = "sRr-sO-uV0"; */
-"sRr-sO-uV0.title" = "Napisz do nas";
-
-/* Class = "NSMenu"; title = "Hidden Bar"; ObjectID = "uQy-DD-JDr"; */
-"uQy-DD-JDr.title" = "Hidden Bar";
+/* Class = "NSMenu"; title = "Hidden Bar Plus"; ObjectID = "uQy-DD-JDr"; */
+"uQy-DD-JDr.title" = "Hidden Bar Plus";
 
 /* Class = "NSMenuItem"; title = "10 seconds"; ObjectID = "z2X-nw-vxX"; */
 "z2X-nw-vxX.title" = "10 s";

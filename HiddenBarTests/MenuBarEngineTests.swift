@@ -138,10 +138,10 @@ final class MenuBarLayoutResolverTests: XCTestCase {
 
     func testSkipsOwnSystemAndUnidentifiedItems() {
         let layout = MenuBarLayoutResolver.resolve(
-            inventory: [item("com.dwarvesv.minimalbar", x: 1100), item("com.apple.MenuBarAgent", x: 1100),
+            inventory: [item("com.sumofoneinteger.hiddenbarplus", x: 1100), item("com.apple.MenuBarAgent", x: 1100),
                         item(nil, x: 1100), item("com.app", x: 1100)],
             separatorFrame: separator, alwaysHiddenSeparatorFrame: nil,
-            isLTR: true, excludingBundle: "com.dwarvesv.minimalbar")
+            isLTR: true, excludingBundle: "com.sumofoneinteger.hiddenbarplus")
         XCTAssertEqual(layout.sections, ["com.app": .hidden])
     }
 
@@ -170,7 +170,7 @@ final class NativeVisibilityEngineTests: XCTestCase {
     private func makeEngine() -> NativeVisibilityEngine {
         let items = self.items!
         return NativeVisibilityEngine(items: items, inventory: inventory, visibility: visibility,
-                                      ownBundleIdentifier: "com.dwarvesv.minimalbar",
+                                      ownBundleIdentifier: "com.sumofoneinteger.hiddenbarplus",
                                       itemFrame: { $0 === items.toggleItem ? separator : alwaysHiddenSeparator },
                                       isLTR: { true })
     }
@@ -181,7 +181,7 @@ final class NativeVisibilityEngineTests: XCTestCase {
         engine.collapse { results.append($0) }
 
         XCTAssertEqual(engine.state, .calibrating)
-        XCTAssertEqual(visibility.requests.first?.bundles, ["com.dwarvesv.minimalbar", "com.visible"])
+        XCTAssertEqual(visibility.requests.first?.bundles, ["com.sumofoneinteger.hiddenbarplus", "com.visible"])
         XCTAssertEqual(visibility.requests.first?.systemItems, NativeVisibilityEngine.systemItemsToKeep)
         XCTAssertFalse(items.separatorItem.isVisible, "the arrow is the boundary; no separator needed")
 
@@ -261,19 +261,19 @@ final class NativeVisibilityEngineTests: XCTestCase {
         let engine = makeEngine()
         engine.updateAlwaysHiddenSection(enabled: true, separatorHidden: true)
         // Expanded with separators hidden: everything but always-hidden is shown.
-        XCTAssertEqual(visibility.requests.last?.bundles, ["com.dwarvesv.minimalbar", "com.hidden", "com.visible"])
+        XCTAssertEqual(visibility.requests.last?.bundles, ["com.sumofoneinteger.hiddenbarplus", "com.hidden", "com.visible"])
         visibility.succeed(visibility.requests.count - 1)
 
         engine.collapse { _ in }
         let collapseIndex = visibility.requests.count - 1
-        XCTAssertEqual(visibility.requests[collapseIndex].bundles, ["com.dwarvesv.minimalbar", "com.visible"])
+        XCTAssertEqual(visibility.requests[collapseIndex].bundles, ["com.sumofoneinteger.hiddenbarplus", "com.visible"])
         let collapsed = visibility.succeed(collapseIndex)
 
         var newIsActiveWhenOldDropped = false
         collapsed.onInvalidate = { newIsActiveWhenOldDropped = true }
         engine.expand()
         let expandIndex = visibility.requests.count - 1
-        XCTAssertEqual(visibility.requests[expandIndex].bundles, ["com.dwarvesv.minimalbar", "com.hidden", "com.visible"])
+        XCTAssertEqual(visibility.requests[expandIndex].bundles, ["com.sumofoneinteger.hiddenbarplus", "com.hidden", "com.visible"])
         XCTAssertFalse(collapsed.isInvalidated, "the old restriction stays until the new one is active")
         visibility.succeed(expandIndex)
         XCTAssertTrue(newIsActiveWhenOldDropped)
@@ -289,7 +289,7 @@ final class NativeVisibilityEngineTests: XCTestCase {
         inventory.items = [item("com.visible", x: 100)]
         engine.collapse { _ in }
         XCTAssertEqual(inventory.snapshots, snapshotsBefore)
-        XCTAssertEqual(visibility.requests.last?.bundles, ["com.dwarvesv.minimalbar", "com.visible"])
+        XCTAssertEqual(visibility.requests.last?.bundles, ["com.sumofoneinteger.hiddenbarplus", "com.visible"])
     }
 
     func testExpandDuringActivationDropsTheLateResult() {

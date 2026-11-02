@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased: Hidden Bar Plus 1.0.0
+
+Hidden Bar Plus starts from Hidden Bar v1.11.1 (dwarvesf/hidden, 2026-09-18). The
+entries below this one are upstream's history and keep upstream's issue numbers.
+
+### Changed
+- Rebranded as Hidden Bar Plus. New bundle identifier `com.sumofoneinteger.hiddenbarplus`,
+  so the app installs next to Hidden Bar and starts with fresh preferences.
+- One build only. The former `Debug-Direct` / `Release-Direct` configurations are
+  now `Debug` / `Release`; the App Store scheme, its sandboxed configurations and
+  the sandbox entitlement are gone. Native hiding on macOS 27 is always compiled in.
+- No development team is set in the project; pick yours in Xcode or pass
+  `DEVELOPMENT_TEAM` on the command line.
+- Version numbering restarts at 1.0.0 (build 1).
+- About screen links point at this repository and credit Hidden Bar.
+
+### Added
+- Sparkle 2 auto-updates: *Check for Updates…* in the context menu and the
+  standard automatic-check prompt. The appcast URL in `Info.plist` is a placeholder
+  until update hosting exists, and `SUPublicEDKey` must be added before the first release.
+- Placeholder app icon, regenerable with `swift scripts/make-placeholder-icon.swift .`.
+
 ## v1.11.1 (2026-09-18)
 
 ### Fixed

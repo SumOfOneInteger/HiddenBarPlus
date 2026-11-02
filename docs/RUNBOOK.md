@@ -1,31 +1,42 @@
 # Maintainer runbook
 
-Build, verify, and release Hidden Bar. Assumes current Xcode on macOS 13+.
+Build, verify and release Hidden Bar Plus. Assumes current Xcode on macOS 13+.
 
 ## Build
 
 ```sh
 # CI-style build, no signing required
-xcodebuild -project 'Hidden Bar.xcodeproj' -scheme 'Hidden Bar' \
+xcodebuild -project 'Hidden Bar Plus.xcodeproj' -scheme 'Hidden Bar Plus' \
   -configuration Debug CODE_SIGNING_ALLOWED=NO build
 
-# runnable local build (uses your Apple Development identity)
-xcodebuild -project 'Hidden Bar.xcodeproj' -scheme 'Hidden Bar' \
-  -configuration Debug build
+# unit tests: HiddenBarTests (engines, autostart) and HiddenTests (notch overflow,
+# hosted inside the app)
+xcodebuild -project 'Hidden Bar Plus.xcodeproj' -scheme 'Hidden Bar Plus' \
+  -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO test
+
+# runnable local build: pass your team once, or set it in Xcode under
+# Signing & Capabilities (the project ships with no DEVELOPMENT_TEAM)
+xcodebuild -project 'Hidden Bar Plus.xcodeproj' -scheme 'Hidden Bar Plus' \
+  -configuration Debug DEVELOPMENT_TEAM=XXXXXXXXXX -allowProvisioningUpdates build
 ```
 
+There are two configurations, `Debug` and `Release`, and both compile the
+macOS 27 native hiding engine (`HIDDENBAR_NATIVE_VISIBILITY` is always set).
 Both must exit 0 with **no** `MACOSX_DEPLOYMENT_TARGET` override; the floor is
 13.0 in the project file. The single expected warning is the deliberately
-deprecated `SMLoginItemSetEnabled(false)` call that cleans up legacy installs.
+deprecated `SMLoginItemSetEnabled(false)` call that cleans up legacy Hidden Bar
+login items. The first build resolves the HotKey and Sparkle packages.
 
-## Behavioral verification (no test target exists; this is the methodology)
+## Behavioral verification
 
-The repo has no unit-test infrastructure; behavior is verified against the real
-menu bar. Two building blocks make that scriptable:
+Unit tests cover the engines and preferences; the menu bar itself is verified
+by hand or by script against the real thing:
 
-1. **Truth signal**: the separator's AX size.
-   `osascript -e 'tell application "System Events" to tell process "Hidden Bar" to get size of menu bar item 2 of menu bar 2'`
-   reads ~20pt expanded vs ~2x-screen-width collapsed. Item 1 is the arrow.
+1. **Truth signal on macOS 13–26**: the separator's AX size.
+   `osascript -e 'tell application "System Events" to tell process "Hidden Bar Plus" to get size of menu bar item 2 of menu bar 2'`
+   reads ~20pt expanded vs ~2x-screen-width collapsed. Item 1 is the arrow. On
+   macOS 27 the separator is not in the bar; check that icons left of the arrow
+   disappear on collapse instead.
 2. **Real clicks, not AXPress**: `AXPress` on the arrow is a no-op because the
    action handler reads `NSApp.currentEvent` (nil under assistive synthesis;
    known accessibility defect). Post real `CGEvent` mouse clicks at the arrow's
@@ -33,57 +44,123 @@ menu bar. Two building blocks make that scriptable:
 
 Standard checks before any release:
 
-- expand/collapse toggle flips the separator size both ways;
+- expand/collapse toggle works both ways;
 - with `numberOfSecondForAutoHide` set to 3, an expanded bar survives 2x the
   window while the pointer is parked in the menubar band, collapses within the
   window once the pointer leaves, and collapses normally if the pointer never
   entered;
-- `hoverToExpand` off: no monitor log line, hover does nothing; on: dwell
-  expands (synthesize a `mouseMoved` stream: cursor warping alone fires no
-  events);
+- `hoverToExpand` off: hover does nothing; on: dwell expands;
 - autostart pref on -> `AutoStart: SMAppService.mainApp.status = 1` on stderr;
   off -> `= 0` (run the binary directly to capture stderr);
+- *Check for Updates…* in the context menu is enabled in a signed build with
+  `SUPublicEDKey` set, and reports "up to date" against the live appcast;
 - localization tables stay parseable: `plutil -lint hidden/*.lproj/*.strings`.
 
-When testing on a machine that runs Hidden Bar daily: export the prefs domain
-first (`defaults export com.dwarvesv.minimalbar backup.plist`), quit the
-installed app, test the dev build, then re-import and relaunch.
+When testing on a machine that runs the app daily: export the prefs domain
+first (`defaults export com.sumofoneinteger.hiddenbarplus backup.plist`), quit
+the installed app, test the dev build, then re-import and relaunch.
 
 ## Release
 
-1. Verify the stack: every PR reviewed, builds green, behavioral checks above run.
-2. Bump `MARKETING_VERSION` (all four Hidden Bar configurations) and
-   `CURRENT_PROJECT_VERSION` in the project file.
-3. Archive the GitHub build with the **Hidden Bar** scheme
-   (`Release-Direct`), then notarize (Developer ID), staple, zip, and publish a
-   GitHub release with notes listing closed issues. The **Hidden Bar App Store**
-   scheme archives `Release`, the sandboxed App Store build, which cannot hide
-   on macOS 27. v1.11 shipped that build to GitHub by mistake. Before zipping,
-   confirm the app is unsandboxed:
+### One-time setup
+
+1. **Apple Developer Program** membership. Create a *Developer ID Application*
+   certificate (Xcode > Settings > Accounts > Manage Certificates) and store
+   notarization credentials once:
+   `xcrun notarytool store-credentials notary --apple-id you@example.com --team-id XXXXXXXXXX`
+   (uses an app-specific password from appleid.apple.com).
+2. **Sparkle signing keys.** The tools ship inside the resolved package:
 
    ```sh
-   codesign -d --entitlements - 'Hidden Bar.app' | grep app-sandbox  # must print nothing
+   SPARKLE_BIN=$(find ~/Library/Developer/Xcode/DerivedData -type d \
+     -path '*artifacts/sparkle/Sparkle/bin' | head -1)
+   "$SPARKLE_BIN/generate_keys"
    ```
-4. App Store (separate lane, **Hidden Bar App Store** scheme): the MAS listing
-   has lagged GitHub since v1.8 (issues #281/#202); decide deliberately whether
-   a release goes there too.
-5. Homebrew cask (`brew install --cask hiddenbar`) follows the GitHub release
-   artifact; notarization matters (issue #219).
-6. Before any public release after the SMAppService migration: one
-   upgrade-path run from a launcher-era build (v1.9 or older) verifying System
-   Settings shows no ghost LauncherApplication login item.
 
-## Stacked-PR hygiene
+   It prints the public key and stores the private key in your login keychain.
+   Put the public key in `hidden/Info.plist` as `SUPublicEDKey` (replace the
+   comment there). Export a backup with `generate_keys -x sparkle_private.key`
+   and keep it somewhere safe: losing the private key strands every installed
+   copy, because they will refuse updates signed with a new key.
+3. **Appcast hosting.** `SUFeedURL` in `Info.plist` is
+   `https://sumofoneinteger.github.io/HiddenBarPlus/appcast.xml`. Enable GitHub
+   Pages for this repository (a `gh-pages` branch or `docs/` folder) and publish
+   `appcast.xml` there, or change the URL before the first release. It must
+   stay HTTPS and must never move once users have the app.
+4. Fill in `teamID` in `scripts/ExportOptions.plist`.
 
-Feature stacks land as chained PRs (`develop <- A <- B`). Merge the base PR
-first, then retarget the next PR's base to `develop` BEFORE merging it;
-deleting a merged branch auto-closes dependents otherwise.
+### Each release
+
+1. Verify: builds green, tests green, behavioral checks above run, CHANGELOG
+   has the entry.
+2. Bump `MARKETING_VERSION` (what users see, e.g. 1.0.1) and
+   `CURRENT_PROJECT_VERSION` (an integer that must increase every release;
+   Sparkle compares it) in the project file, in both configurations.
+3. Archive and export a Developer ID build:
+
+   ```sh
+   xcodebuild -project 'Hidden Bar Plus.xcodeproj' -scheme 'Hidden Bar Plus' \
+     -configuration Release -archivePath build/HiddenBarPlus.xcarchive \
+     -allowProvisioningUpdates archive
+   xcodebuild -exportArchive -archivePath build/HiddenBarPlus.xcarchive \
+     -exportOptionsPlist scripts/ExportOptions.plist -exportPath build/export
+   ```
+
+   (Or Product > Archive in Xcode, then *Distribute App > Direct Distribution*,
+   which also notarizes.)
+4. Notarize and staple:
+
+   ```sh
+   cd build/export
+   ditto -c -k --keepParent 'Hidden Bar Plus.app' HiddenBarPlus-1.0.0.zip
+   xcrun notarytool submit HiddenBarPlus-1.0.0.zip --keychain-profile notary --wait
+   xcrun stapler staple 'Hidden Bar Plus.app'
+   rm HiddenBarPlus-1.0.0.zip
+   ditto -c -k --keepParent 'Hidden Bar Plus.app' HiddenBarPlus-1.0.0.zip   # stapled copy
+   ```
+
+5. Confirm the shipped app is unsandboxed and hardened:
+
+   ```sh
+   codesign -d --entitlements - -vv 'Hidden Bar Plus.app' 2>&1 | grep -E 'app-sandbox|runtime'
+   # must print the runtime flag and nothing about app-sandbox
+   spctl -a -vv 'Hidden Bar Plus.app'   # "accepted ... source=Notarized Developer ID"
+   ```
+
+6. Appcast: keep a local folder with the zips of every release and run
+
+   ```sh
+   "$SPARKLE_BIN/generate_appcast" \
+     --download-url-prefix https://github.com/SumOfOneInteger/HiddenBarPlus/releases/download/v1.0.0/ \
+     path/to/release-zips
+   ```
+
+   It signs the new zip with your EdDSA key and writes `appcast.xml` next to
+   the zips. Publish that `appcast.xml` at `SUFeedURL`.
+7. Create the GitHub release `v1.0.0`, attach the stapled zip under exactly the
+   name the appcast references, paste the CHANGELOG entry.
+8. Homebrew: after the first notarized release, submit a cask named
+   `hidden-bar-plus` to homebrew-cask (`brew create --cask <zip url>` scaffolds
+   it; `brew audit --cask --new hidden-bar-plus` before the PR), or publish it
+   in your own tap. Later releases only need the version and sha256 bumped.
+
+## Tracking upstream
+
+Hidden Bar Plus started from dwarvesf/hidden `develop` at v1.11.1.
+
+```sh
+git remote add upstream https://github.com/dwarvesf/hidden.git
+git fetch upstream
+git merge upstream/develop
+```
+
+Expect conflicts in the project file (renamed configurations, Sparkle) and in
+branded strings; the Swift sources merge cleanly because they were left as
+upstream wrote them.
 
 ## Issue triage map
 
 The live clusters and their code areas are documented at the end of
 [ARCHITECTURE.md](ARCHITECTURE.md#known-architectural-limits): notch, macOS 27
-mechanism break, and pointer-vs-open-menu limits. Memory reports (#361 et al.)
-have so far not reproduced as leaks (constraint-leak fix landed; `leaks` clean
-over toggle stress); re-check with a 24h+ uptime `footprint` sample before
-chasing further.
+mechanism, and pointer-vs-open-menu limits. The inherited open items are in
+[BACKLOG.md](BACKLOG.md).

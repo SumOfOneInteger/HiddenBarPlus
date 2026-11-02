@@ -1,6 +1,9 @@
 # Manual
 
-Everything Hidden Bar can do, including the parts with no UI.
+Everything Hidden Bar Plus can do, including the parts with no UI.
+
+> Inherited from Hidden Bar; `Check for Updates…` in the context menu is new in
+> Hidden Bar Plus.
 
 ## Basics
 
@@ -12,9 +15,9 @@ Everything Hidden Bar can do, including the parts with no UI.
 - **Option-click the arrow**: show/hide the separators and the always-hidden
   area without expanding.
 
-### macOS 27, direct download build
+### macOS 27
 
-The direct (non-App Store) build hides icons natively on macOS 27, and the
+Hidden Bar Plus hides icons natively on macOS 27, and the
 **arrow itself is the boundary**: there is no `|` separator. ⌘-drag icons to
 the arrow's left to hide them when collapsed, to its right to keep them
 visible. The always-hidden separator still appears (while expanded) when that
@@ -25,14 +28,14 @@ section is enabled.
   expanded.
 - Hiding is per app: an app with several icons hides or shows them together.
 - macOS's own items (clock, Wi-Fi, Sound, Control Center) always stay visible.
-- Run Hidden Bar from `/Applications`; macOS only recognizes that copy as
-  Hidden Bar, and a copy elsewhere hides its own arrow.
+- Run Hidden Bar Plus from `/Applications`; macOS only recognizes that copy as
+  Hidden Bar Plus, and a copy elsewhere hides its own arrow.
 
 ## Preferences window
 
 | Setting | What it does |
 |---|---|
-| Start Hidden Bar when I log in | Login item via System Settings (macOS 13+ `SMAppService`); revocable in System Settings > General > Login Items |
+| Start Hidden Bar Plus when I log in | Login item via System Settings (macOS 13+ `SMAppService`); revocable in System Settings > General > Login Items |
 | Show preferences on launch | Open this window at app start |
 | Auto collapse | Re-hide automatically after the chosen delay |
 | Global shortcut | System-wide expand/collapse hotkey (F-keys display as F18, not Fn18) |
@@ -63,31 +66,31 @@ All via `defaults`; quit and relaunch the app after changing them.
 
 ```sh
 # expand by hovering the menu bar for ~0.5s (off by default)
-defaults write com.dwarvesv.minimalbar hoverToExpand -bool true
+defaults write com.sumofoneinteger.hiddenbarplus hoverToExpand -bool true
 
 # auto-collapse delay in seconds (the UI offers a fixed list; any value works)
-defaults write com.dwarvesv.minimalbar numberOfSecondForAutoHide -float 5
+defaults write com.sumofoneinteger.hiddenbarplus numberOfSecondForAutoHide -float 5
 
 # force the app language regardless of system order (issue #287)
-defaults write com.dwarvesv.minimalbar AppleLanguages '(en)'
+defaults write com.sumofoneinteger.hiddenbarplus AppleLanguages '(en)'
 ```
 
-To undo any of them: `defaults delete com.dwarvesv.minimalbar <key>`.
+To undo any of them: `defaults delete com.sumofoneinteger.hiddenbarplus <key>`.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
 | Icons I want visible got hidden after an update | ⌘-drag them to the right of the separator |
-| Login item missing after denying it once | System Settings > General > Login Items: re-enable Hidden Bar, then toggle the pref off/on |
+| Login item missing after denying it once | System Settings > General > Login Items: re-enable Hidden Bar Plus, then toggle the pref off/on |
 | A ghost "LauncherApplication" login item from old versions | Launch the current version once; it deauthorizes the legacy item automatically |
 | App language stuck | See the `AppleLanguages` command above, or System Settings > General > Language & Region > Applications |
-| Nothing hides on a macOS 27 beta | Known (issue #360); the menu bar re-architecture broke the hiding mechanism, fix under investigation |
+| Nothing hides on macOS 27 | Grant Accessibility (System Settings › Privacy & Security › Accessibility) and make sure the app runs from `/Applications` |
 | A new or just-updated app's icon shows up already hidden | Expected, see "Why new icons start hidden" below; ⌘-drag it to the right of the separator once |
 
 ### Why new icons start hidden
 
-Hidden Bar hides icons by widening its separator so everything to the *left* of
+On macOS 13–26, Hidden Bar Plus hides icons by widening its separator so everything to the *left* of
 it slides off-screen. macOS always inserts a brand-new menu-bar icon at the
 far-left slot, which is inside that hidden zone, so a freshly launched or updated
 app can appear "swallowed". This is macOS positioning behavior, not Hidden Bar

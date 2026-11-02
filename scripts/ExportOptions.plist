@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- xcodebuild -exportArchive options for a Developer ID (direct download) build.
+	     Fill in teamID with your 10-character Apple Developer Team ID. -->
+	<key>method</key>
+	<string>developer-id</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>teamID</key>
+	<string>YOUR_TEAM_ID</string>
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>

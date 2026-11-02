@@ -93,7 +93,7 @@ class StatusBarController: MenuBarItemProvider {
         }
     }
 
-    // Opt-in via `defaults write com.dwarvesv.minimalbar hoverToExpand -bool true`.
+    // Opt-in via `defaults write com.sumofoneinteger.hiddenbarplus hoverToExpand -bool true`.
     // No monitor is installed at all unless the pref is true at launch.
     private func setupHoverToExpandIfEnabled() {
         guard Preferences.hoverToExpand else { return }
@@ -345,6 +345,11 @@ class StatusBarController: MenuBarItemProvider {
         toggleAutoHideItem.target = self
         menu.addItem(toggleAutoHideItem)
 
+        menu.addItem(NSMenuItem.separator())
+        let updateItem = NSMenuItem(title: "Check for Updates...".localized,
+                                    action: #selector(AppUpdater.checkForUpdates(_:)), keyEquivalent: "")
+        updateItem.target = AppUpdater.shared
+        menu.addItem(updateItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit".localized, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 

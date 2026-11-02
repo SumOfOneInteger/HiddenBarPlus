@@ -1,13 +1,16 @@
 # Architecture
 
-Hidden Bar is a single-process, sandboxed AppKit menubar utility (~1.5k lines of
-Swift, one dependency: [HotKey](https://github.com/soffes/HotKey)). There is no
+Hidden Bar Plus is a single-process AppKit menubar utility (~1.5k lines of Swift,
+two dependencies: [HotKey](https://github.com/soffes/HotKey) for the global
+shortcut and [Sparkle](https://sparkle-project.org) for updates). It is not
+sandboxed: the macOS 27 hiding engine needs Accessibility reads the App Sandbox
+blocks, which is why the app is distributed outside the App Store. There is no
 helper app, no daemon, no network. Everything happens inside three
 `NSStatusItem`s and one window.
 
 ## The core trick
 
-macOS offers no API to hide other apps' menubar icons. Hidden Bar fakes it with
+macOS offers no API to hide other apps' menubar icons. Hidden Bar Plus fakes it with
 geometry: a separator status item whose **length is inflated to roughly the
 width of the widest attached screen**, shoving every icon to its left off-screen.
 Collapsing and expanding is just flipping that length between ~20pt and the
@@ -64,7 +67,9 @@ flowchart TD
   The controller calls `collapse` / `expand` / `updateAlwaysHiddenSection` /
   `invalidateLayout` and never writes a status-item length itself.
   `MenuBarEngineFactory` is the one place that picks an engine for the running
-  OS; today that is always `LegacyLengthEngine` (the length trick below).
+  OS: `NativeVisibilityEngine` on macOS 27 and later (macOS hides the icons
+  itself through the private `MenuBarClientCore` framework, loaded at runtime),
+  `LegacyLengthEngine` (the length trick below) on everything older.
 - **`Preferences`** (facade enum): typed accessors over `UserDefaults`; setters
   post `NotificationCenter` notifications that the controller and prefs window
   observe. There is no other state store.
@@ -90,10 +95,11 @@ garbage-collects those; see Apple TN3111). The helper app itself is gone.
 
 ## Security posture
 
-Sandboxed (`com.apple.security.app-sandbox`), hardened runtime, no network
-entitlement, no file I/O, no IPC surface, no shell or subprocess use. The only
-dependency is HotKey (a small Carbon `RegisterEventHotKey` wrapper) locked by
-the committed `Package.resolved`. The opt-in hover monitor observes pointer
+Not sandboxed (see above), hardened runtime, no file I/O, no shell or
+subprocess use. Network access is limited to Sparkle's update check against
+the HTTPS appcast in `Info.plist`; updates must carry a valid EdDSA signature.
+Dependencies are HotKey (a small Carbon `RegisterEventHotKey` wrapper) and
+Sparkle, both locked by the committed `Package.resolved`. The opt-in hover monitor observes pointer
 position only and discards event payloads. About-window links are hardcoded.
 A full-tree audit (2026-06) scored 9/10 with hygiene-level findings only.
 
@@ -102,9 +108,11 @@ A full-tree audit (2026-06) scored 9/10 with hygiene-level findings only.
 - **The notch**: hidden icons sit "under" the notch area on notched Macs; the
   trick cannot reveal them there. The real fix is a spillover/second-bar design
   (tracked in issues #357/#341/#148; candidate implementations in PRs #350/#358).
-- **macOS 27**: the menu bar re-architecture in macOS 27 betas
+- **macOS 27**: the menu bar re-architecture in macOS 27
   (`NSMenuBarNavigationSceneExtension`) breaks length-inflation hiding entirely
-  (issue #360). A different mechanism may be required.
+  (upstream issue #360). `NativeVisibilityEngine` works around it by asking
+  macOS to hide the icons; its limits (per-app hiding, system items always
+  visible, Accessibility required) are listed in the [manual](MANUAL.md#macos-27).
 - **Other apps' open menus**: interaction-awareness is pointer-position-based;
   a pointer deep inside another app's open dropdown is below the menubar band,
   so the collapse can still fire there.

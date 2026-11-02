@@ -1,5 +1,5 @@
 import XCTest
-@testable import Hidden_Bar
+@testable import HiddenBarPlus
 
 /// Contract: Preferences.notchOverflowEnabled and AppDelegate's default
 /// values must give the user an explicit, persistent, discoverable way to
