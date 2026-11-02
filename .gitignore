@@ -125,3 +125,6 @@ DerivedData/
 **/xcshareddata/WorkspaceSettings.xcsettings
 
 # End of https://www.gitignore.io/api/macos,swift
+
+# Python bytecode from scripts/
+__pycache__/
